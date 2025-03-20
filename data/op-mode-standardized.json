@@ -31,5 +31,6 @@
 "system.py",
 "uptime.py",
 "version.py",
-"vrf.py"
+"vrf.py",
+"interfaces_wireless.py"
 ]
