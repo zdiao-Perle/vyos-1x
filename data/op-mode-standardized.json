@@ -1,5 +1,6 @@
 [
 "interfaces_wireless.py",
+"image_manager.py",
 "accelppp.py",
 "bgp.py",
 "bonding.py",
