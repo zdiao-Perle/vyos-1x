@@ -1,6 +1,6 @@
 [
 "interfaces_wireless.py",
-"image_manager.py",
+"firewall.py",
 "accelppp.py",
 "bgp.py",
 "bonding.py",
@@ -35,3 +35,4 @@
 "version.py",
 "vrf.py"
 ]
+                                
