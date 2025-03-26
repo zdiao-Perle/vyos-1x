@@ -1,6 +1,6 @@
 [
 "interfaces_wireless.py",
-"firewall.py",
+"firewall_query.py",
 "accelppp.py",
 "bgp.py",
 "bonding.py",
