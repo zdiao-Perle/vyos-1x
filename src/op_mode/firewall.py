@@ -368,7 +368,7 @@ def show_firewall():
                 output_firewall_state_policy(family)
 
         if family in firewall:
-            for hook, hook_conf in firewall[family].items():
+            for hook in firewall[family]:
                 for prior, prior_conf in firewall[family][hook].items():
                     output_firewall_name(family, hook, prior, prior_conf)
 

@@ -14,12 +14,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import argparse
-import ipaddress
 import json
 import re
-import tabulate
-import textwrap
 
 from vyos.config import Config
 from vyos.utils.process import cmd
@@ -364,42 +360,46 @@ def show_statistics(raw: bool = False, **kwargs):
     # Determine which families to process
     families =  ['ipv4', 'ipv6', 'bridge']
     
+    if raw:
     # Process each family
-    for fam in families:
-        if fam not in firewall:
-            continue
-            
-        result['statistics'][fam] = {}
-        
-        # Add state policy statistics if configured
-        if 'global_options' in firewall and 'state_policy' in firewall['global_options']:
-            state_details = get_nftables_state_details(fam)
-            if state_details:
-                result['statistics'][fam]['state_policy'] = state_details
-        
-        # Process each hook
-        hooks =  firewall[fam].keys()
-        
-        for h in hooks:
-            if h not in firewall[fam]:
+        for fam in families:
+            if fam not in firewall:
                 continue
-                
-            result['statistics'][fam][h] = {}
             
-            # Process each ruleset
-            rulesets =  firewall[fam][h].keys()
-            
-            for rs in rulesets:
-                if rs not in firewall[fam][h]:
+            result['statistics'][fam] = {}
+        
+            # Add state policy statistics if configured
+            if 'global_options' in firewall and 'state_policy' in firewall['global_options']:
+                state_details = get_nftables_state_details(fam)
+                if state_details:
+                    result['statistics'][fam]['state_policy'] = state_details
+        
+            # Process each hook
+            hooks =  firewall[fam].keys()
+        
+            for h in hooks:
+                if h not in firewall[fam]:
                     continue
-                    
-                rs_conf = firewall[fam][h][rs]
                 
-                # Generate dictionary for this ruleset using the existing function
-                ruleset_data = get_firewall_statistics_dict(fam, h, rs, rs_conf)
-                result['statistics'][fam][h][rs] = ruleset_data
+                result['statistics'][fam][h] = {}
+            
+                # Process each ruleset
+                rulesets =  firewall[fam][h].keys()
+            
+                for rs in rulesets:
+                    if rs not in firewall[fam][h]:
+                        continue
+                    
+                    rs_conf = firewall[fam][h][rs]
+                
+                    # Generate dictionary for this ruleset using the existing function
+                    ruleset_data = get_firewall_statistics_dict(fam, h, rs, rs_conf)
+                    result['statistics'][fam][h][rs] = ruleset_data
     
-    return result
+        return result
+    else:
+        print("This function is implemented for GraphQL raw output only!")
+        return {}
 
 if __name__ == '__main__':
     print(show_statistics(raw=True))
