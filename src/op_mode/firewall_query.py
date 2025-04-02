@@ -14,13 +14,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
+import sys
 import json
 import re
 
+# Add the directory containing this file to the Python path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from vyos.config import Config
 from vyos.utils.process import cmd
 from vyos.utils.dict import dict_search_args
-def get_config_node(conf, node=None, family=None, hook=None, priority=None):
+from firewall import get_config_node, get_nftables_details, get_nftables_state_details
+'''def get_config_node(conf, node=None, family=None, hook=None, priority=None):
     if node == 'nat':
         if family == 'ipv6':
             config_path = ['nat66']
@@ -113,7 +118,7 @@ def get_nftables_state_details(family):
                 rule['conditions'] = re.sub(r'(\b(counter packets \d+ bytes \d+|drop|reject|return|log)\b|comment "[\w\-]+")', '', line).strip()
                 out[state] = rule
     return out
-
+'''
 def show_firewall(raw: bool = False, **kwargs):
     """
     Fetch firewall rulesets information with proper structure.
