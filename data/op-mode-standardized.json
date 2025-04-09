@@ -1,5 +1,6 @@
 [
 "interfaces_wireless.py",
+"vrrp_query.py",
 "firewall_query.py",
 "accelppp.py",
 "bgp.py",
