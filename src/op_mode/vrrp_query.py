@@ -8,6 +8,7 @@ import vyos.opmode
 from vyos.ifconfig import VRRP
 from vyos.ifconfig.vrrp import VRRPNoData
 
+
 VRRP_AUTH_NONE = 0
 VRRP_AUTH_PASS = 1
 VRRP_AUTH_AH = 2
@@ -75,44 +76,117 @@ def _process_field(data: dict, field: str, true_value: str, false_value: str):
     """
     data[field] = true_value if data.get(field) else false_value
 
-def _get_formatted_detail_output(data: list) -> list:
+def _get_formatted_detail_output_as_dict(data: list) -> dict:
     """
-    Prepare formatted detail information output from the given data.
-
+    Prepare formatted detail information as a dictionary with keys matching the template fields.
+    
     Args:
-        data (list): A list of dictionaries containing vrrp grop information
-            and statistics.
-
+        data (list): A list of dictionaries containing vrrp group information and statistics.
+        
     Returns:
-        str: Rendered detail info output based on the provided data.
+        dict: Dictionary with the same structure as the template display.
     """
-    instances = list()
+    # First process data the same way as in _get_formatted_detail_output
+    instances = []
     for instance in data:
-        instance['data']['state'] = VRRP_STATE_TO_NAME.get(
-            instance['data'].get('state'), 'unknown'
+        instance_data = {}
+        raw_data = instance['data']
+        
+        # Process state names and boolean fields
+        raw_data['state'] = VRRP_STATE_TO_NAME.get(
+            raw_data.get('state'), 'unknown'
         )
-        instance['data']['wantstate'] = VRRP_STATE_TO_NAME.get(
-            instance['data'].get('wantstate'), 'unknown'
+        raw_data['wantstate'] = VRRP_STATE_TO_NAME.get(
+            raw_data.get('wantstate'), 'unknown'
         )
-        instance['data']['auth_type'] = VRRP_AUTH_TO_NAME.get(
-            instance['data'].get('auth_type'), 'unknown'
+        raw_data['auth_type'] = VRRP_AUTH_TO_NAME.get(
+            raw_data.get('auth_type'), 'unknown'
         )
-        _process_field(instance['data'], 'lower_prio_no_advert', 'false', 'true')
-        _process_field(instance['data'], 'higher_prio_send_advert', 'true', 'false')
-        _process_field(instance['data'], 'accept', 'Enabled', 'Disabled')
-        _process_field(instance['data'], 'notify_deleted', 'Deleted', 'Fault')
-        _process_field(instance['data'], 'smtp_alert', 'yes', 'no')
-        _process_field(instance['data'], 'nopreempt', 'Disabled', 'Enabled')
-        _process_field(instance['data'], 'promote_secondaries', 'Enabled', 'Disabled')
-        instance['data']['vips'] = instance['data'].get('vips', False)
-        instance['data']['evips'] = instance['data'].get('evips', False)
-        instance['data']['vroutes'] = instance['data'].get('vroutes', False)
-        instance['data']['vrules'] = instance['data'].get('vrules', False)
-
-        instances.append(instance['data'])
-
+        
+        # Process boolean fields
+        _process_field(raw_data, 'lower_prio_no_advert', 'false', 'true')
+        _process_field(raw_data, 'higher_prio_send_advert', 'true', 'false')
+        _process_field(raw_data, 'accept', 'Enabled', 'Disabled')
+        _process_field(raw_data, 'notify_deleted', 'Deleted', 'Fault')
+        _process_field(raw_data, 'smtp_alert', 'yes', 'no')
+        _process_field(raw_data, 'nopreempt', 'Disabled', 'Enabled')
+        _process_field(raw_data, 'promote_secondaries', 'Enabled', 'Disabled')
+        raw_data['vips'] = raw_data.get('vips', [])
+        raw_data['evips'] = raw_data.get('evips', [])
+        raw_data['vroutes'] = raw_data.get('vroutes', [])
+        raw_data['vrules'] = raw_data.get('vrules', [])
+        
+        # Now build the structured dictionary with keys matching template fields
+        instance_data['VRRP Instance'] = raw_data['iname']
+        instance_data['VRRP Version'] = raw_data['version']
+        instance_data['State'] = raw_data['state']
+        
+        if raw_data['state'] == 'BACKUP':
+            instance_data['Master priority'] = raw_data['master_priority']
+            if raw_data['version'] == 3:
+                instance_data['Master advert interval'] = raw_data['master_adver_int']
+        
+        instance_data['Wantstate'] = raw_data['wantstate']
+        instance_data['Last transition'] = raw_data['last_transition']
+        instance_data['Interface'] = raw_data['ifp_ifname']
+        
+        if raw_data.get('dont_track_primary', 0) > 0:
+            instance_data['VRRP interface tracking'] = 'disabled'
+            
+        if raw_data.get('skip_check_adv_addr', 0) > 0:
+            instance_data['Skip checking advert IP addresses'] = True
+            
+        if raw_data.get('strict_mode', 0) > 0:
+            instance_data['Enforcing strict VRRP compliance'] = True
+        
+        instance_data['Gratuitous ARP delay'] = raw_data['garp_delay']
+        instance_data['Gratuitous ARP repeat'] = raw_data['garp_rep']
+        instance_data['Gratuitous ARP refresh'] = raw_data['garp_refresh']
+        instance_data['Gratuitous ARP refresh repeat'] = raw_data['garp_refresh_rep']
+        instance_data['Gratuitous ARP lower priority delay'] = raw_data['garp_lower_prio_delay']
+        instance_data['Gratuitous ARP lower priority repeat'] = raw_data['garp_lower_prio_rep']
+        instance_data['Send advert after receive lower priority advert'] = raw_data['lower_prio_no_advert']
+        instance_data['Send advert after receive higher priority advert'] = raw_data['higher_prio_send_advert']
+        instance_data['Virtual Router ID'] = raw_data['vrid']
+        instance_data['Priority'] = raw_data['base_priority']
+        instance_data['Effective priority'] = raw_data['effective_priority']
+        instance_data['Advert interval'] = f"{raw_data['adver_int']} sec"
+        instance_data['Accept'] = raw_data['accept']
+        instance_data['Preempt'] = raw_data['nopreempt']
+        
+        if raw_data.get('preempt_delay'):
+            instance_data['Preempt delay'] = raw_data['preempt_delay']
+            
+        instance_data['Promote secondaries'] = raw_data['promote_secondaries']
+        instance_data['Authentication type'] = raw_data['auth_type']
+        
+        if raw_data['vips']:
+            instance_data['Virtual IP'] = {
+                'count': len(raw_data['vips']),
+                'addresses': raw_data['vips']
+            }
+            
+        if raw_data['evips']:
+            instance_data['Virtual IP Excluded'] = raw_data['evips']
+            
+        if raw_data['vroutes']:
+            instance_data['Virtual Routes'] = raw_data['vroutes']
+            
+        if raw_data['vrules']:
+            instance_data['Virtual Rules'] = raw_data['vrules']
+            
+        if raw_data.get('track_ifp'):
+            instance_data['Tracked interfaces'] = raw_data['track_ifp']
+            
+        if raw_data.get('track_script'):
+            instance_data['Tracked scripts'] = raw_data['track_script']
+            
+        instance_data['Using smtp notification'] = raw_data['smtp_alert']
+        instance_data['Notify deleted'] = raw_data['notify_deleted']
+        
+        instances.append(instance_data)
+    
     return instances
-
 def show_detail(
     raw: bool, group_name: typing.Optional[str] = None
 ) -> typing.Union[list, str]:
@@ -131,7 +205,7 @@ def show_detail(
     data = _get_raw_data(group_name)
 
     if raw:
-        return _get_formatted_detail_output(data)
+        return _get_formatted_detail_output_as_dict(data)
 
     else:
         print("This function is intended for GraphQL Usage only. VRRP group details are not available in this version.")
