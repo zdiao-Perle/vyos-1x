@@ -3,8 +3,10 @@ import sys
 import typing
 
 from jinja2 import Template
+from time import time
 
 import vyos.opmode
+from vyos.utils.convert import seconds_to_human
 from vyos.ifconfig import VRRP
 from vyos.ifconfig.vrrp import VRRPNoData
 
@@ -60,6 +62,7 @@ def _get_raw_data(group_name: str = None) -> list:
                 return [rec]
         return []
     return data
+
 def _process_field(data: dict, field: str, true_value: str, false_value: str):
     """
     Updates the given field in the data dictionary with a specified value based
@@ -187,6 +190,31 @@ def _get_formatted_detail_output_as_dict(data: list) -> dict:
         instances.append(instance_data)
     
     return instances
+def get_formatted_summary_output(data):
+        headers = ['Name', 'Interface', 'VRID', 'State', 'Priority', 'Last Transition']
+        results = []
+
+        data = json.loads(data) if isinstance(data, str) else data
+        for group in data:
+            data = group['data']
+            instance = {}
+
+            instance["Name"] = data['iname']
+            instance["Interface"] = data['ifp_ifname']
+            instance["VRID"] = data['vrid']
+            instance["State"] = VRRP_STATE_TO_NAME.get(
+            data["state"], 'unknown'
+        )
+            instance["Priority"] = data['effective_priority']
+
+            since = int(time() - float(data['last_transition']))
+            instance["Last Transition"] = seconds_to_human(since)
+
+            results.append(instance)
+
+        # add to the active list disabled instances
+
+        return results
 def show_detail(
     raw: bool, group_name: typing.Optional[str] = None
 ) -> typing.Union[list, str]:
@@ -250,7 +278,7 @@ def show_summary(raw: bool) -> typing.Union[list, str]:
     data = _get_raw_data()
 
     if raw:
-        return data
+        return get_formatted_summary_output(data)
 
     else:
         print("This function is intended for GraphQL Usage only. VRRP group summary is not available in this version.")
