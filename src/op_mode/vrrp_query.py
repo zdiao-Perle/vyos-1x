@@ -10,7 +10,7 @@ from vyos.utils.convert import seconds_to_human
 from vyos.ifconfig import VRRP
 from vyos.ifconfig.vrrp import VRRPNoData
 
-
+# https://github.com/acassen/keepalived/blob/59c39afe7410f927c9894a1bafb87e398c6f02be/keepalived/include/vrrp.h#L126
 VRRP_AUTH_NONE = 0
 VRRP_AUTH_PASS = 1
 VRRP_AUTH_AH = 2
@@ -104,15 +104,15 @@ def _process_field(data: dict, field: str, true_value: str, false_value: str):
     """
     data[field] = true_value if data.get(field) else false_value
 
-def _get_formatted_detail_output_as_dict(data: list) -> dict:
+def _get_formatted_detail_output(data: list) -> dict:
     """
-    Prepare formatted detail information as a dictionary with keys matching the template fields.
+    Prepare formatted detail information as a list of dictionaries with keys matching the template fields.
     
     Args:
         data (list): A list of dictionaries containing vrrp group information and statistics.
         
     Returns:
-        dict: Dictionary with the same structure as the template display.
+        List: List with the same structure as the template display.
     """
     # First process data the same way as in _get_formatted_detail_output
     instances = []
@@ -215,30 +215,32 @@ def _get_formatted_detail_output_as_dict(data: list) -> dict:
         instances.append(instance_data)
     
     return instances
+
 def get_formatted_summary_output(data):
-        results = []
+    results = []
 
-        data = json.loads(data) if isinstance(data, str) else data
-        for group in data:
-            data = group['data']
-            instance = {}
+    data = json.loads(data) if isinstance(data, str) else data
+    for group in data:
+        data = group['data']
+        instance = {}
 
-            instance["Name"] = data['iname']
-            instance["Interface"] = data['ifp_ifname']
-            instance["VRID"] = data['vrid']
-            instance["State"] = VRRP_STATE_TO_NAME.get(
+        instance["Name"] = data['iname']
+        instance["Interface"] = data['ifp_ifname']
+        instance["VRID"] = data['vrid']
+        instance["State"] = VRRP_STATE_TO_NAME.get(
             data["state"], 'unknown'
         )
-            instance["Priority"] = data['effective_priority']
+        instance["Priority"] = data['effective_priority']
 
-            since = int(time() - float(data['last_transition']))
-            instance["Last Transition"] = seconds_to_human(since)
+        since = int(time() - float(data['last_transition']))
+        instance["Last Transition"] = seconds_to_human(since)
 
-            results.append(instance)
+        results.append(instance)
 
-        # add to the active list disabled instances
+    # add to the active list disabled instances
 
-        return results
+    return results
+
 def _get_formatted_statistics_output(data: list) -> list:
     """
     Prepare formatted statistics output from the given data as a list of dictionaries.
@@ -273,7 +275,8 @@ def _get_formatted_statistics_output(data: list) -> list:
         
         instances.append(stats_dict)
     
-    return instances  # Just return the list, don't wrap it in a dictionary  # Changed from "results" to "result" and removed nesting
+    return instances
+
 def show_detail(
     raw: bool, group_name: typing.Optional[str] = None
 ) -> typing.Union[list, str]:
@@ -292,12 +295,11 @@ def show_detail(
     data = _get_raw_data(group_name)
 
     if raw:
-        return _get_formatted_detail_output_as_dict(data)
+        return _get_formatted_detail_output(data)
 
     else:
         print("This function is intended for GraphQL Usage only. VRRP group details are not available in this version.")
         return []
-
 
 def show_statistics(
     raw: bool, group_name: typing.Optional[str] = None
@@ -323,7 +325,6 @@ def show_statistics(
         print("This function is intended for GraphQL Usage only. VRRP group statistics are not available in this version.")
         return []
 
-
 def show_summary(raw: bool) -> typing.Union[list, str]:
     """
     Display a summary of VRRP group.
@@ -338,7 +339,15 @@ def show_summary(raw: bool) -> typing.Union[list, str]:
 
     if raw:
         return get_formatted_summary_output(data)
-
     else:
         print("This function is intended for GraphQL Usage only. VRRP group summary is not available in this version.")
         return []
+
+if __name__ == '__main__':
+    try:
+        res = vyos.opmode.run(sys.modules[__name__])
+        if res:
+            print(res)
+    except (ValueError, vyos.opmode.Error) as e:
+        print(e)
+        sys.exit(1)
