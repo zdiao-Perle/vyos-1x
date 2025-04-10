@@ -34,6 +34,31 @@ VRRP_STATE_TO_NAME = {
     VRRP_STATE_FAULT: 'FAULT',
 }
 
+
+stat_template = Template("""
+{% for rec in instances %}
+VRRP Instance: {{rec.instance}}
+  Advertisements:
+    Received: {{rec.advert_rcvd}}
+    Sent: {{rec.advert_sent}}
+  Became master: {{rec.become_master}}
+  Released master: {{rec.release_master}}
+  Packet Errors:
+    Length: {{rec.packet_len_err}}
+    TTL: {{rec.ip_ttl_err}}
+    Invalid Type: {{rec.invalid_type_rcvd}}
+    Advertisement Interval: {{rec.advert_interval_err}}
+    Address List: {{rec.addr_list_err}}
+  Authentication Errors:
+    Invalid Type: {{rec.invalid_authtype}}
+    Type Mismatch: {{rec.authtype_mismatch}}
+    Failure: {{rec.auth_failure}}
+  Priority Zero:
+    Received: {{rec.pri_zero_rcvd}}
+    Sent: {{rec.pri_zero_sent}}
+{% endfor %}
+""")
+
 def _get_raw_data(group_name: str = None) -> list:
     """
     Retrieve raw JSON data for all VRRP groups.
@@ -191,7 +216,6 @@ def _get_formatted_detail_output_as_dict(data: list) -> dict:
     
     return instances
 def get_formatted_summary_output(data):
-        headers = ['Name', 'Interface', 'VRID', 'State', 'Priority', 'Last Transition']
         results = []
 
         data = json.loads(data) if isinstance(data, str) else data
@@ -215,6 +239,41 @@ def get_formatted_summary_output(data):
         # add to the active list disabled instances
 
         return results
+def _get_formatted_statistics_output(data: list) -> list:
+    """
+    Prepare formatted statistics output from the given data as a list of dictionaries.
+
+    Args:
+        data (list): A list of dictionaries containing VRRP group information
+            and statistics.
+
+    Returns:
+        list: Statistics data formatted as a list of dictionaries.
+    """
+    instances = []
+    for instance in data:
+        # Create a statistics dictionary with the instance name and all stats
+        stats_dict = {
+            'instance': instance['data'].get('iname'),
+            'advert_rcvd': instance['stats'].get('advert_rcvd', 0),
+            'advert_sent': instance['stats'].get('advert_sent', 0),
+            'become_master': instance['stats'].get('become_master', 0),
+            'release_master': instance['stats'].get('release_master', 0),
+            'packet_len_err': instance['stats'].get('packet_len_err', 0),
+            'ip_ttl_err': instance['stats'].get('ip_ttl_err', 0),
+            'invalid_type_rcvd': instance['stats'].get('invalid_type_rcvd', 0),
+            'advert_interval_err': instance['stats'].get('advert_interval_err', 0),
+            'addr_list_err': instance['stats'].get('addr_list_err', 0),
+            'invalid_authtype': instance['stats'].get('invalid_authtype', 0),
+            'authtype_mismatch': instance['stats'].get('authtype_mismatch', 0),
+            'auth_failure': instance['stats'].get('auth_failure', 0),
+            'pri_zero_rcvd': instance['stats'].get('pri_zero_rcvd', 0),
+            'pri_zero_sent': instance['stats'].get('pri_zero_sent', 0)
+        }
+        
+        instances.append(stats_dict)
+    
+    return instances  # Just return the list, don't wrap it in a dictionary  # Changed from "results" to "result" and removed nesting
 def show_detail(
     raw: bool, group_name: typing.Optional[str] = None
 ) -> typing.Union[list, str]:
@@ -258,7 +317,7 @@ def show_statistics(
     data = _get_raw_data(group_name)
 
     if raw:
-        return data
+        return _get_formatted_statistics_output(data)
 
     else:
         print("This function is intended for GraphQL Usage only. VRRP group statistics are not available in this version.")
